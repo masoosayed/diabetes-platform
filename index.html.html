@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة نحو بناء جيل أقوى - متابعة السكري المدرسي</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        if (window.tailwind) tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#0284c7',
+                        secondary: '#059669',
+                        accent: '#d97706',
+                        danger: '#dc2626',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+    <!-- IMPORTANT: This is an offline educational demo, not real authentication. -->
+    <div id="demo-login" class="fixed inset-0 z-[100] bg-slate-900/90 flex items-center justify-center p-4">
+        <form onsubmit="demoLogin(event)" class="w-full max-w-sm bg-white rounded-3xl p-7 shadow-2xl space-y-4">
+            <div class="text-center"><div class="text-3xl">🏫</div><h2 class="font-black text-xl text-slate-900">نحو بناء جيل أقوى</h2><p class="text-sm text-slate-500">دخول تجريبي إلى المنصة</p></div>
+            <div><label class="font-bold text-xs block mb-2">نوع الحساب</label>
+                <select id="login-role" class="w-full rounded-xl p-3 border border-slate-300 text-sm" required>
+                    <option value="parent">ولي الأمر — الطفل 01</option><option value="teacher">المعلم — الأطفال المصرح بهم</option><option value="admin">الإدارة المدرسية</option>
+                </select>
+            </div>
+            <div><label class="font-bold text-xs block mb-2">رمز الدخول التجريبي</label><input id="login-pin" type="password" inputmode="numeric" maxlength="4" required class="w-full border border-slate-300 rounded-xl p-3" placeholder="أدخل الرمز"></div>
+            <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl">للتجربة فقط: رمز ولي الأمر <b>1111</b>، المعلم <b>2222</b>، الإدارة <b>3333</b>. هذه الرموز <b>ليست حماية فعلية</b>.</p>
+            <p id="login-error" class="text-red-600 text-xs hidden">رمز الدخول غير صحيح.</p>
+            <button type="submit" class="w-full p-3 bg-sky-700 text-white rounded-xl font-bold">دخول</button>
+            <p class="text-[11px] text-amber-800">لا تدخل أي بيانات حقيقية لأطفال. الحفظ محلي بهذا المتصفح، ولا تتبادل أجهزة مختلفة البيانات.</p>
+        </form>
+    </div>
+    <!-- Top Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white shadow-md shadow-sky-600/20">
+                    <i data-lucide="heart-pulse" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 leading-tight">نحو بناء جيل أقوى</h1>
+                    <p class="text-[11px] text-slate-500">نموذج توعوي لإدارة المتابعة المدرسية لمرضى السكري</p>
+                </div>
+            </div>
+
+            <!-- Display signed-in role; switching requires demo login -->
+            <div class="flex items-center gap-3">
+                <span id="signed-role" class="text-xs font-bold text-sky-800 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">دخول تجريبي</span>
+                <button type="button" onclick="logout()" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-2 rounded-xl">تسجيل خروج</button>
+                <button type="button" onclick="triggerEmergencyModal()" class="bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl text-xs font-bold">إرشادات وتوثيق طارئ</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="mb-5 bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 leading-relaxed">
+           <strong>نسخة تعليمية تجريبية:</strong> الطلبات والردود وحالات المتابعة تظهر عند تسجيل الدخول بالأدوار المختلفة <strong>على الجهاز نفسه فقط</strong>. لا يوجد خادم مشترك أو صلاحيات آمنة أو إشعارات حقيقية. لا تُدخل بيانات أطفال حقيقية. عند الطوارئ اتصل بالإسعاف <strong>999</strong> مباشرة.
+        </div>
+
+        <!-- Banner Notification Area -->
+        <div id="alert-banner" class="hidden mb-6 bg-red-50 border border-red-200 text-red-800 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                    <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm">تسجيل حدث طارئ تجريبي</h4>
+                    <p id="alert-banner-text" class="text-xs text-red-600">حدث مسجل للتجربة فقط. لم تُرسل إشعارات إلى أي جهة.</p>
+                </div>
+            </div>
+            <button onclick="dismissAlert()" class="text-xs font-bold bg-white border border-red-300 px-3 py-1.5 rounded-xl hover:bg-red-100 transition">إغلاق التنبيه الظاهر</button>
+        </div>
+
+        <!-- Student Selector Bar (Using ID Codes) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 space-x-reverse w-full sm:w-auto">
+                <div class="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-black text-sm border border-sky-100">
+                    <span id="header-student-code">طفل-01</span>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <h2 class="font-bold text-slate-900 text-base" id="current-student-title">الطفل المعرف: [ طفل-01 ]</h2>
+                        <span class="bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 rounded-full font-bold border border-emerald-200">النوع الأول (Type 1)</span>
+                    </div>
+                    <p class="text-xs text-slate-500">المرحلة: الصف الثالث الابتدائي - فصل (ب)</p>
+                </div>
+            </div>
+            <div id="student-picker" class="flex items-center space-x-2 space-x-reverse w-full sm:w-auto justify-end">
+                <label class="text-xs font-bold text-slate-600">اختر الكود التعريفي للطفل:</label>
+                <select id="student-code-select" onchange="changeStudentCode(this.value)" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <option value="طفل-01">كود الطفل: طفل-01 (الفصل 3/ب)</option>
+                    <option value="طفل-02">كود الطفل: طفل-02 (الفصل 5/أ)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ================= 1. PARENT VIEW ================= -->
+        <div id="view-parent" class="space-y-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">آخر قراءة مسجلة اليوم</p>
+                    <h3 class="text-2xl font-black text-slate-800 mt-1" id="parent-last-glucose">138 <span class="text-xs font-normal text-slate-500">mg/dL</span></h3>
+                    <p class="text-xs text-emerald-600 font-semibold mt-2">الهدف الفردي يُحدد في خطة الرعاية</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">الموعد الطبي القادم</p>
+                    <h3 class="text-sm font-black text-slate-800 mt-1" id="next-app-display">مجمع السلمانية الطبي (20 أكتوبر)</h3>
+                    <p class="text-xs text-sky-600 font-semibold mt-2">عيادة السكري والغدد الصماء</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">أعذار الغياب المرفوعة</p>
+                    <h3 class="text-2xl font-black text-slate-800 mt-1" id="parent-excuse-count">0</h3>
+                    <p class="text-xs text-slate-500 font-semibold mt-2">عدد الأعذار المعتمدة</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">ملخص المتابعة المدرسية</p>
+                    <h3 class="text-xl font-black text-emerald-600 mt-1">راجع السجلات</h3>
+                    <p class="text-xs text-slate-500 font-semibold mt-2">البيانات تجريبية وغير تشخيصية</p>
+                </div>
+            </div>
+
+            <!-- Parent Main Sections: Medical Appointments & Absence Excuses -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Medical Appointments & Reminders (Salmaniya & Others) -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-base">مواعيد المستشفيات والمراجعات</h3>
+                            <p class="text-xs text-slate-500">جدولة وتتبع مواعيد مستشفى السلمانية والمستشفيات الأخرى</p>
+                        </div>
+                        <button onclick="openAppointmentModal()" class="bg-sky-50 text-sky-700 hover:bg-sky-100 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center space-x-1.5 space-x-reverse">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span>إضافة موعد جديد</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-3" id="appointments-list">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+                <!-- Absence Excuses Management -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-base">أعذار الغياب والتقارير المرضية</h3>
+                            <p class="text-xs text-slate-500">رفع أعذار الغياب المدرسية بسبب المراجعات أو الوعكة</p>
+                        </div>
+                        <button onclick="openExcuseModal()" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center space-x-1.5 space-x-reverse">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                            <span>رفع عذر جديد</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-3" id="excuses-list">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Evolution Chart & Daily Logs Summary -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">تطور الحالة الصحية اليومية والتراكمية</h3>
+                        <p class="text-xs text-slate-500">متابعة قراءات السكر المرصودة في المدرسة عبر ساعات الدوام</p>
+                    </div>
+                </div>
+                <div class="h-64 w-full relative">
+                    <canvas id="parentGlucoseChart"></canvas>
+                </div>
+            </div>
+            <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-900">التواصل الصحي مع المعلم</h3>
+                <p class="text-xs text-slate-500 mt-1 mb-3">تبادل الملاحظات الصحية المدرسية بخصوص الطفل المحدد — تجربة محفوظة على هذا الجهاز فقط.</p>
+                <div id="parent-messages" class="space-y-2 mb-3"></div>
+                <form onsubmit="submitMessage(event,'parent')" class="flex flex-col sm:flex-row gap-2">
+                    <input id="parent-message" required maxlength="500" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm" placeholder="اكتب توجيهًا أو ردًا للمعلم...">
+                    <button class="bg-sky-700 text-white rounded-xl px-4 py-2 text-xs font-bold">إرسال رسالة</button>
+                </form>
+            </section>
+            <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div><h3 class="font-bold text-slate-900">خطة الرعاية والتواصل مع الإدارة</h3><p class="text-xs text-slate-500 mt-1">يمكن لولي الأمر تأكيد تسليم خطة الرعاية وتحديث وسائل التواصل. المعلومات طبية افتراضية للتجربة.</p></div>
+                <form onsubmit="submitParentCarePlan(event)" class="bg-sky-50 border border-sky-100 p-4 rounded-xl space-y-3 text-xs">
+                    <label class="flex items-center gap-2"><input type="checkbox" id="parent-care-submitted" class="w-4 h-4"> سلّمتُ خطة الرعاية الفردية المعتمدة إلى المدرسة</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" id="parent-care-contact" class="w-4 h-4"> تأكدتُ من تحديث بيانات تواصل ولي الأمر والطوارئ لدى المدرسة</label>
+                    <button class="px-4 py-2 rounded-xl bg-sky-700 text-white font-bold" type="submit">حفظ تأكيدات الأسرة</button>
+                </form>
+                <div id="parent-care-status"></div>
+                <h4 class="text-sm font-bold">طلبات الإدارة الموجّهة إليك</h4>
+                <div id="parent-requests" class="space-y-3"></div>
+                <h4 class="text-sm font-bold">حالة المتابعات المدرسية</h4>
+                <div id="parent-case-summary" class="space-y-2"></div>
+            </section>
+        </div>
+
+        <!-- ================= 2. TEACHER VIEW ================= -->
+        <div id="view-teacher" class="hidden space-y-6">
+            <div class="bg-gradient-to-r from-sky-700 to-blue-800 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <span class="bg-white/20 text-xs px-3 py-1 rounded-full font-semibold">بوابة المعلم المباشرة</span>
+                    <h2 class="text-xl font-black mt-2">تسجيل الملاحظات والقياسات المدرسية للطفل</h2>
+                    <p class="text-xs text-sky-100 mt-1">وثّق ما لاحظته في الصف، وأضف أي قراءة موثقة أو إجراء متابعة بالتنسيق مع الأسرة.</p>
+                </div>
+                <button onclick="openTeacherLogModal()" class="bg-white text-sky-700 px-5 py-2.5 rounded-xl font-bold text-xs shadow hover:bg-sky-50 transition flex items-center space-x-2 space-x-reverse shrink-0">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>إضافة سجل متابعة</span>
+                </button>
+            </div>
+
+            <!-- Teacher Logging & Monitoring Table -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-slate-900 text-base">سجلات المتابعة الصحية المدرسية</h3>
+                    <span class="text-xs text-slate-500 font-semibold" id="teacher-current-code-label">الكود التعريفي الحالي: طفل-01</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 rounded-r-xl">الوقت</th>
+                                <th class="p-3">مستوى السكر (mg/dL)</th>
+                                <th class="p-3">رعاية / ملاحظة</th>
+                                <th class="p-3">الوجبة / السناك</th>
+                                <th class="p-3">الأعراض الظاهرة</th>
+                                <th class="p-3">الإجراء / التواصل</th>
+                                <th class="p-3 rounded-l-xl text-center">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100" id="teacher-logs-tbody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-slate-900">سجل التواصل مع الأسرة</h3>
+                <p class="text-xs text-slate-500 mt-1 mb-3">اكتب ما يلزم إبلاغ الأسرة به، وتابع ردها في نفس سجل الطفل.</p>
+                <div id="teacher-messages" class="space-y-2 mb-3"></div>
+                <form onsubmit="submitMessage(event,'teacher')" class="flex flex-col sm:flex-row gap-2">
+                    <input id="teacher-message" required maxlength="500" class="flex-1 border border-slate-300 rounded-xl px-3 py-2 text-sm" placeholder="اكتب ملاحظة أو توجيهًا للأسرة...">
+                    <button class="bg-sky-700 text-white rounded-xl px-4 py-2 text-xs font-bold">إرسال رسالة</button>
+                </form>
+            </section>
+            <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                <div><h3 class="font-bold text-slate-900">طلبات الإدارة ومتابعة التنسيق المدرسي</h3><p class="text-xs text-slate-500 mt-1">الرد على طلبات المتابعة وتنظيم التعويض الدراسي عند الغياب بسبب المراجعات الطبية.</p></div>
+                <div id="teacher-requests" class="space-y-3"></div>
+                <h4 class="text-sm font-bold">الحالات المسجلة بانتظار المتابعة</h4>
+                <div id="teacher-case-summary" class="space-y-2"></div>
+            </section>
+        </div>
+
+        <!-- ================= 3. ADMIN VIEW ================= -->
+        <div id="view-admin" class="hidden space-y-6">
+            <div class="bg-gradient-to-l from-sky-800 to-indigo-800 rounded-2xl p-6 text-white shadow-sm">
+                <div class="flex items-center gap-3"><i data-lucide="school" class="w-7 h-7"></i><div><h2 class="text-xl font-black">لوحة الإدارة المدرسية</h2><p class="text-xs text-sky-100 mt-1">التنسيق مع الأسرة والمعلم، التحقق من جاهزية الرعاية، وإكمال المتابعات الإدارية.</p></div></div>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-500">حالات تحتاج متابعة</p>
+                    <h3 id="admin-open-cases" class="text-3xl font-black text-amber-600 mt-1">0</h3>
+                    <p class="text-xs text-slate-500 mt-2">لم تُغلق بعد</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-500">طلبات تنتظر الرد</p>
+                    <h3 id="admin-waiting-requests" class="text-3xl font-black text-sky-700 mt-1">0</h3>
+                    <p class="text-xs text-slate-500 mt-2">من الأسرة أو المعلم</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-500">متابعات مكتملة</p>
+                    <h3 id="admin-closed-cases" class="text-3xl font-black text-emerald-700 mt-1">0</h3>
+                    <p class="text-xs text-slate-500 mt-2">حالات أُغلقت</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-500">خطط رعاية مكتملة</p>
+                    <h3 id="admin-ready-plans" class="text-3xl font-black text-slate-800 mt-1">0/2</h3>
+                    <p class="text-xs text-slate-500 mt-2">بعد مراجعة بيانات الأسرة</p>
+                </div>
+            </div>
+            <section class="grid lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+                    <div><h3 class="font-bold text-slate-900">متابعة الحالات والإجراءات المدرسية</h3><p class="text-xs text-slate-500 mt-1">فتح حالة، تحديد إجراء، ثم متابعة تنفيذها حتى الإغلاق.</p></div>
+                    <form onsubmit="submitAdminCase(event)" class="bg-slate-50 rounded-xl p-3 space-y-2 text-xs">
+                        <div class="grid sm:grid-cols-2 gap-2"><select id="new-case-student" class="border border-slate-300 rounded-xl p-2" required><option value="طفل-01">طفل-01</option><option value="طفل-02">طفل-02</option></select><input id="new-case-title" class="border border-slate-300 rounded-xl p-2" placeholder="عنوان المتابعة (مثل: تجهيز رحلة)" maxlength="100" required></div>
+                        <textarea id="new-case-details" rows="2" class="w-full border border-slate-300 rounded-xl p-2" maxlength="400" placeholder="ما المطلوب متابعته إداريًا؟" required></textarea>
+                        <button type="submit" class="bg-sky-700 text-white font-bold rounded-xl px-4 py-2">فتح متابعة جديدة</button>
+                    </form>
+                    <div id="admin-case-list" class="space-y-3"></div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+                    <div><h3 class="font-bold text-slate-900">طلبات التنسيق مع الأسرة والمعلم</h3><p class="text-xs text-slate-500 mt-1">يرى كل طرف الطلب الموجّه إليه في واجهته، ويمكنه الرد داخل المنصة التجريبية.</p></div>
+                    <form onsubmit="submitAdminRequest(event)" class="bg-slate-50 rounded-xl p-3 space-y-2 text-xs">
+                        <div class="grid sm:grid-cols-2 gap-2"><select id="request-student" class="border border-slate-300 rounded-xl p-2"><option value="طفل-01">طفل-01</option><option value="طفل-02">طفل-02</option></select><select id="request-target" class="border border-slate-300 rounded-xl p-2"><option value="parent">ولي الأمر</option><option value="teacher">المعلم</option></select></div>
+                        <input id="request-title" class="w-full border border-slate-300 rounded-xl p-2" placeholder="موضوع الطلب" maxlength="100" required>
+                        <textarea id="request-details" rows="2" class="w-full border border-slate-300 rounded-xl p-2" placeholder="التوضيح والإجراء المطلوب" maxlength="400" required></textarea>
+                        <button type="submit" class="bg-sky-700 text-white font-bold rounded-xl px-4 py-2">إرسال الطلب داخل المنصة</button>
+                    </form>
+                    <div id="admin-request-list" class="space-y-3"></div>
+                </div>
+            </section>
+            <section class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+                <h3 class="font-bold">جاهزية خطة الرعاية لكل طفل</h3>
+                <p class="text-xs text-slate-500">تتابع الإدارة اكتمال الوثائق وتنظيم الرعاية. هذه مؤشرات تنظيمية، ولا تعرض تفاصيل طبية حساسة.</p>
+                <div id="admin-readiness" class="grid md:grid-cols-2 gap-3"></div>
+            </section>
+            <section class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+                <h3 class="font-bold">تنسيق المواعيد والغياب والتعويض الدراسي</h3>
+                <p class="text-xs text-slate-500">اطّلع على المواعيد المضافة من الأسرة، ووجّه طلب تنسيق للمعلم بشأن الأنشطة والدروس الفائتة.</p>
+                <div id="admin-appointments" class="space-y-3"></div>
+            </section>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">إجمالي الأطفال المصابين بالسكري</p>
+                    <h3 class="text-3xl font-black text-slate-800 mt-1">2 <span class="text-xs font-normal text-slate-500">حالات افتراضية</span></h3>
+                    <p class="text-xs text-emerald-600 mt-2 font-semibold">إحصاءات تجريبية فقط</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">أعذار الغياب بانتظار الاعتماد</p>
+                    <h3 class="text-3xl font-black text-amber-600 mt-1" id="pending-excuses-count">2</h3>
+                    <p class="text-xs text-slate-500 mt-2 font-semibold">تتطلب المراجعة الإدارية</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-bold text-slate-400">سجلات الطوارئ هذا الأسبوع</p>
+                    <h3 class="text-3xl font-black text-emerald-600 mt-1">0 <span class="text-xs font-normal text-slate-500">حالات حرجة</span></h3>
+                    <p class="text-xs text-slate-500 mt-2 font-semibold">وثائق تجريبية — ليست تقارير طبية</p>
+                </div>
+            </div>
+
+            <!-- Admin Management Tabs: Excuses Review & Emergency Logs -->
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-base mb-1">مراجعة واعتماد أعذار الغياب والتقارير المرضية</h3>
+                    <p class="text-xs text-slate-500 mb-4">التحقق من الأعذار المرفوعة من أولياء الأمور عبر الأكواد التعريفية</p>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3 rounded-r-xl">كود الطفل</th>
+                                    <th class="p-3">فترة الغياب</th>
+                                    <th class="p-3">سبب الغياب / الموعد</th>
+                                    <th class="p-3">المرفق الطبي</th>
+                                    <th class="p-3">الحالة الحالية</th>
+                                    <th class="p-3 rounded-l-xl text-center">الإجراء الإداري</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100" id="admin-excuses-table">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-slate-100">
+                    <h3 class="font-bold text-slate-900 text-base mb-1">سجل الطوارئ والحوادث المدرسية العامة (للأكواد)</h3>
+                    <p class="text-xs text-slate-500 mb-4">رصد أي انخفاض أو ارتفاع حاد تم التعامل معه ميدانياً</p>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3 rounded-r-xl">كود الطفل</th>
+                                    <th class="p-3">نوع الحدث</th>
+                                    <th class="p-3">وقت البلاغ</th>
+                                    <th class="p-3">التدخل السريع</th>
+                                    <th class="p-3 rounded-l-xl">الحالة النهائية</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="p-3 font-bold text-slate-800">طفل-02</td>
+                                    <td class="p-3"><span class="bg-red-50 text-red-700 px-2 py-0.5 rounded-full font-bold">هبوط خفيف (58 mg/dL)</span></td>
+                                    <td class="p-3 text-slate-500">أمس، 10:15 صباحاً</td>
+                                    <td class="p-3 text-slate-600">إعطاء 15 جرام جلوكوز سريع (عصير محلى)</td>
+                                    <td class="p-3"><span class="text-emerald-600 font-bold">استقر وعاد للفصل</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+        <p>منصة نحو بناء جيل أقوى لمتابعة أطفال السكري &copy; 2026 - نسخة تجريبية ببيانات افتراضية — غير مخصصة لبيانات أطفال حقيقية</p>
+    </footer>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Add Appointment Modal (Parent) -->
+    <div id="modal-appointment" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-base text-slate-900">إضافة موعد طبي جديد</h3>
+                <button onclick="closeAppointmentModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="handleAppointmentSubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">اختر المستشفى / العيادة</label>
+                    <select id="app-hospital" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="مجمع السلمانية الطبي">مجمع السلمانية الطبي (عيادة السكري والغدد الصماء)</option>
+                        <option value="مستشفى الملك حمد الجامعي">مستشفى الملك حمد الجامعي</option>
+                        <option value="مستشفى الإرسالية الأمريكية">مستشفى الإرسالية الأمريكية</option>
+                        <option value="مستشفى البحرين التخصصي">مستشفى البحرين التخصصي</option>
+                        <option value="مستشفى ابن خلدون التخصصي">مستشفى ابن خلدون التخصصي</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">تاريخ الموعد</label>
+                    <input type="date" id="app-date" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">وقت الموعد</label>
+                    <input type="time" id="app-time" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div class="flex items-center justify-end space-x-2 space-x-reverse pt-2">
+                    <button type="button" onclick="closeAppointmentModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold">إلغاء</button>
+                    <button type="submit" class="px-5 py-2 bg-sky-600 text-white rounded-xl font-bold shadow-sm">حفظ الموعد</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Upload Excuse Modal (Parent) -->
+    <div id="modal-excuse" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-base text-slate-900">رفع عذر غياب أو تقرير طبي</h3>
+                <button onclick="closeExcuseModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="handleExcuseSubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">تاريخ الغياب أو الموعد</label>
+                    <input type="date" id="exc-date" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">سبب الغياب / تفاصيل الموعد الطبي</label>
+                    <textarea id="exc-reason" required rows="2" placeholder="مثال: موعد مراجعة في مجمع السلمانية الطبي..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">اسم الملف المُختار (لا تُرفع الملفات في النسخة التجريبية)</label>
+                    <input type="file" id="exc-file" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-[11px] text-slate-500">
+                </div>
+                <div class="flex items-center justify-end space-x-2 space-x-reverse pt-2">
+                    <button type="button" onclick="closeExcuseModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold">إلغاء</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-sm">إرسال للإدارة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Teacher Log Modal -->
+    <div id="modal-teacher-log" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-base text-slate-900">تسجيل ملاحظة صحية مدرسية</h3>
+                <button onclick="closeTeacherLogModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="handleTeacherLogSubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">قراءة السكر (mg/dL) — اختياري، إن كانت متاحة</label>
+                    <input type="number" id="t-glucose" min="20" max="600" placeholder="مثال: 140" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">العلاج الموثّق بواسطة الطفل أو الممرض (إن وجد)</label>
+                    <input type="text" id="t-insulin" placeholder="مثال: تم التعامل وفق خطة الرعاية بإشراف الممرض" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">الوجبة الغذائية أو السناك المستهلك</label>
+                    <input type="text" id="t-meal" placeholder="مثال: ساندويتش وتفاحة (30 جم كارب)" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">الأعراض الظاهرة</label>
+                    <input type="text" id="t-symptoms" placeholder="مثال: لا توجد أعراض، نشيط ومستقر" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">الإجراء المتخذ داخل الصف</label>
+                    <input id="t-action" type="text" placeholder="مثال: إراحة الطفل والتواصل مع الأسرة" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                </div>
+                <label class="flex items-center gap-2 text-slate-700"><input type="checkbox" id="t-notified" class="w-4 h-4"> تم التواصل مع الأسرة</label>
+                <label class="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-100 p-3 text-amber-900"><input type="checkbox" id="t-followup" class="w-4 h-4"> الحالة تحتاج متابعة من الإدارة المدرسية (تنسيق أو استكمال إجراء)</label>
+                <div class="flex items-center justify-end space-x-2 space-x-reverse pt-2">
+                    <button type="button" onclick="closeTeacherLogModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold">إلغاء</button>
+                    <button type="submit" class="px-5 py-2 bg-sky-700 text-white rounded-xl font-bold shadow-sm">حفظ السجل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Emergency SOS Modal -->
+    <div id="modal-emergency" class="fixed inset-0 bg-red-950/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-2 border-red-500 text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                <i data-lucide="alert-octagon" class="w-8 h-8"></i>
+            </div>
+            <h3 class="font-black text-xl text-red-700 mb-1">إطلاق نداء طوارئ فوري</h3>
+            <p class="text-xs text-slate-600 mb-6">هذه نسخة تجريبية: لا تُرسل بلاغات حقيقية. في الطوارئ اتصل بالإسعاف 999 مباشرة ولا تنتظر تسجيل الحدث.</p>
+            
+            <div class="space-y-3 text-right text-xs mb-6">
+                <label class="block font-bold text-slate-700">حدد طبيعة الطارئ:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="selectEmerType(this)" class="emer-type-btn p-3 rounded-xl border border-red-300 bg-red-50 text-red-700 font-bold text-center transition">اشتباه انخفاض السكر</button>
+                    <button type="button" onclick="selectEmerType(this)" class="emer-type-btn p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-center transition">اشتباه ارتفاع السكر / أعراض خطيرة</button>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <button onclick="closeEmergencyModal()" class="w-1/2 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs">إلغاء</button>
+                <button onclick="confirmEmergencySOS()" class="w-1/2 py-2.5 bg-red-600 text-white rounded-xl font-bold text-xs hover:bg-red-700 shadow-lg shadow-red-600/30">توثيق الحالة تجريبيًا</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Platform Logic -->
+    <script>
+    // This file is for training with fictional children only. Demo PINs do not secure data.
+    const STORAGE_KEY = 'school_diabetes_demo_v3';
+    const SESSION_KEY = 'school_diabetes_demo_role';
+    const PINS = { parent:'1111', teacher:'2222', admin:'3333' };
+    const ROLE_LABEL = {parent:'ولي الأمر',teacher:'المعلم',admin:'الإدارة المدرسية'};
+    // A browser may block storage for locally opened HTML files; fail clearly rather than crashing.
+    const safeStore = {
+      getLocal(key){try{return window.localStorage.getItem(key)}catch(e){return null}},
+      setLocal(key,value){try{window.localStorage.setItem(key,value);return true}catch(e){return false}},
+      getSession(key){try{return window.sessionStorage.getItem(key)}catch(e){return null}},
+      setSession(key,value){try{window.sessionStorage.setItem(key,value)}catch(e){}},
+      removeSession(key){try{window.sessionStorage.removeItem(key)}catch(e){}}
+    };
+    let currentRole = null;
+    let currentStudentCode = 'طفل-01';
+    let selectedEmergencyType = 'اشتباه انخفاض السكر';
+    let parentChartInstance = null;
+    const initialData = {
+      'طفل-01': {
+        appointments:[{hospital:'مجمع السلمانية الطبي',date:'2026-10-20',time:'10:00',status:'قادم'}],
+        excuses:[{date:'2026-10-02',reason:'مراجعة طبية دورية (مثال)',file:'ملف تجريبي — غير مرفوع',status:'معتمد'}],
+        logs:[{time:'2026-10-17 07:30',glucose:128,insulin:'وفق الخطة',meal:'إفطار مدرسي',symptoms:'لا توجد',action:'ملاحظة روتينية',notified:false},
+              {time:'2026-10-17 10:15',glucose:138,insulin:'—',meal:'تفاحة',symptoms:'لا توجد',action:'—',notified:false}],
+        messages:[],emergencies:[],
+        cases:[],requests:[],carePlan:{submitted:true,contactConfirmed:true,reviewed:false,assigned:false}
+      },
+      'طفل-02': {
+        appointments:[{hospital:'مجمع السلمانية الطبي',date:'2026-10-25',time:'11:00',status:'قادم'}],
+        excuses:[{date:'2026-09-28',reason:'مراجعة صحية (مثال)',file:'ملف تجريبي — غير مرفوع',status:'بانتظار الاعتماد'}],
+        logs:[{time:'2026-10-17 08:00',glucose:160,insulin:'وفق الخطة',meal:'ساندويتش',symptoms:'لا توجد',action:'—',notified:false}],
+        messages:[],emergencies:[],
+        cases:[{id:'demo-c2',title:'استكمال ترتيبات الرعاية للرحلة المدرسية',details:'مراجعة احتياجات الطالب قبل النشاط الخارجي بالتنسيق مع الأسرة والمعلم.',status:'قيد المتابعة',action:'',time:'2026-10-17',updatedAt:''}],
+        requests:[],carePlan:{submitted:false,contactConfirmed:false,reviewed:false,assigned:false}
+      }
+    };
+    function loadSavedData(){
+      try {
+        const value=JSON.parse(safeStore.getLocal(STORAGE_KEY));
+        if(value && typeof value==='object' && value['طفل-01'] && value['طفل-02']) {
+          for(const code of ['طفل-01','طفل-02']){
+            const d=value[code];const defaults=initialData[code];
+            if(!Array.isArray(d.cases))d.cases=structuredClone(defaults.cases);
+            if(!Array.isArray(d.requests))d.requests=[];
+            if(!d.carePlan || typeof d.carePlan!=='object')d.carePlan=structuredClone(defaults.carePlan);
+            for(const [k,v] of Object.entries(defaults.carePlan))if(typeof d.carePlan[k]!=='boolean')d.carePlan[k]=v;
+          }
+          return value;
+        }
+      } catch(e){}
+      return structuredClone(initialData);
+    }
+    let dataByCode=loadSavedData();
+    function persist(){
+      if(safeStore.setLocal(STORAGE_KEY, JSON.stringify(dataByCode))) return true;
+      alert('تعذر حفظ البيانات محليًا على هذا المتصفح، ولن تستمر بعد تحديث الصفحة.');
+      return false;
+    }
+    function escapeHtml(value){
+      return String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function fmtDate(){return new Date().toLocaleString('ar-BH',{hour12:false});}
+    function roleCheck(role){return currentRole===role;}
+    function showLoginScreen(){document.getElementById('demo-login').classList.remove('hidden');}
+    function demoLogin(event){
+      event.preventDefault();
+      const role=document.getElementById('login-role').value;
+      const pin=document.getElementById('login-pin').value;
+      if(PINS[role]!==pin){document.getElementById('login-error').classList.remove('hidden');return;}
+      document.getElementById('login-error').classList.add('hidden');
+      document.getElementById('login-pin').value='';
+      currentRole=role; safeStore.setSession(SESSION_KEY,role);
+      document.getElementById('demo-login').classList.add('hidden');
+      setRoleView();
+    }
+    function logout(){
+      currentRole=null;safeStore.removeSession(SESSION_KEY);currentStudentCode='طفل-01';
+      document.getElementById('login-pin').value='';
+      showLoginScreen();
+    }
+    function setRoleView(){
+      if(!currentRole){showLoginScreen();return;}
+      currentStudentCode='طفل-01';
+      document.getElementById('signed-role').textContent='الدور الحالي: '+ROLE_LABEL[currentRole];
+      ['parent','teacher','admin'].forEach(r=>document.getElementById('view-'+r).classList.toggle('hidden',r!==currentRole));
+      document.getElementById('student-picker').classList.toggle('hidden',roleCheck('parent'));
+      document.getElementById('student-code-select').value=currentStudentCode;
+      renderAllViews();
+    }
+    function changeStudentCode(code){
+      if(!currentRole || (roleCheck('parent') && code!=='طفل-01') || !dataByCode[code]) return;
+      currentStudentCode=code;renderAllViews();
+    }
+    function initParentChart(){
+      const canvas=document.getElementById('parentGlucoseChart');
+      if(!canvas || typeof Chart==='undefined')return;
+      const logs=(dataByCode[currentStudentCode].logs||[]).filter(x=>Number.isFinite(Number(x.glucose)) && x.glucose!==null && x.glucose!=='').slice(0,20).reverse();
+      if(parentChartInstance)parentChartInstance.destroy();
+      parentChartInstance=new Chart(canvas.getContext('2d'),{
+        type:'line',data:{labels:logs.map(l=>String(l.time)),datasets:[{label:'قراءات السكر المسجلة',data:logs.map(l=>Number(l.glucose)),borderColor:'#0284c7',backgroundColor:'rgba(2,132,199,0.08)',borderWidth:2,tension:.25,pointRadius:3}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false},x:{ticks:{maxTicksLimit:6}}}}
+      });
+    }
+    function renderMessages(){
+      const msgs=(dataByCode[currentStudentCode].messages||[]);
+      for(const id of ['parent-messages','teacher-messages']){
+        const el=document.getElementById(id);
+        if(!el)continue;
+        el.innerHTML=msgs.length?msgs.map(m=>`<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs"><div class="flex justify-between gap-3 mb-1"><b class="text-sky-800">${m.sender==='parent'?'ولي الأمر':'المعلم'}</b><span class="text-slate-500">${escapeHtml(m.time)}</span></div><p class="text-slate-700 break-words">${escapeHtml(m.text)}</p></div>`).join(''):'<p class="text-xs text-slate-400">لا توجد رسائل بعد.</p>';
+      }
+    }
+    function submitMessage(e,sender){
+      e.preventDefault();if(!roleCheck(sender))return;
+      const input=document.getElementById(sender+'-message');
+      const message=input.value.trim();if(!message)return;
+      dataByCode[currentStudentCode].messages ??=[];
+      dataByCode[currentStudentCode].messages.push({sender,text:message,time:fmtDate()});
+      persist();input.value='';renderMessages();showToast('تم حفظ الرسالة على هذا الجهاز فقط.');
+    }
+
+    function makeDemoId(){return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);}
+    function allCases(){return Object.entries(dataByCode).flatMap(([code,d])=>(d.cases||[]).map((c,index)=>({...c,code,index})));}
+    function allRequests(){return Object.entries(dataByCode).flatMap(([code,d])=>(d.requests||[]).map((r,index)=>({...r,code,index})));}
+    function statusPill(status){
+      const color=status==='مكتملة' || status==='مغلق'?'bg-emerald-50 text-emerald-700':status==='تم الرد'?'bg-blue-50 text-blue-800':'bg-amber-50 text-amber-800';
+      return `<span class="${color} rounded-full px-2 py-1 text-[11px] font-bold">${escapeHtml(status)}</span>`;
+    }
+    function submitAdminCase(event){
+      event.preventDefault();if(!roleCheck('admin'))return;
+      const code=document.getElementById('new-case-student').value;
+      const title=document.getElementById('new-case-title').value.trim();
+      const details=document.getElementById('new-case-details').value.trim();
+      if(!dataByCode[code]||!title||!details)return;
+      dataByCode[code].cases.unshift({id:makeDemoId(),title,details,status:'بانتظار إجراء',action:'',time:fmtDate(),updatedAt:''});
+      persist();event.target.reset();renderAllViews();showToast('تم فتح متابعة إدارية داخل النسخة التجريبية.');
+    }
+    function updateAdminCase(code,index){
+      if(!roleCheck('admin')||!dataByCode[code]?.cases?.[index])return;
+      const card=document.getElementById('admin-case-'+code.replace(/[^\w\u0600-\u06ff0-9-]/g,'')+'-'+index);
+      if(!card)return;
+      const status=card.querySelector('[data-field="status"]').value;
+      const action=card.querySelector('[data-field="action"]').value.trim();
+      if(status==='مكتملة'&&!action){alert('اكتب الإجراء الذي اكتمل قبل إغلاق الحالة.');return;}
+      Object.assign(dataByCode[code].cases[index],{status,action,updatedAt:fmtDate()});
+      persist();renderAllViews();showToast('تم تحديث المتابعة، وستظهر حالتها لبقية الأدوار داخل هذا الجهاز.');
+    }
+    function submitAdminRequest(event){
+      event.preventDefault();if(!roleCheck('admin'))return;
+      const code=document.getElementById('request-student').value;
+      const target=document.getElementById('request-target').value;
+      const title=document.getElementById('request-title').value.trim();
+      const details=document.getElementById('request-details').value.trim();
+      if(!dataByCode[code]||!['parent','teacher'].includes(target)||!title||!details)return;
+      dataByCode[code].requests.unshift({id:makeDemoId(),target,title,details,status:'بانتظار الرد',response:'',time:fmtDate(),answeredAt:''});
+      persist();event.target.reset();renderAllViews();showToast('حُفظ الطلب في الواجهة التجريبية للطرف المحدد.');
+    }
+    function submitRequestReply(event,code,index){
+      event.preventDefault();const req=dataByCode[code]?.requests?.[index];
+      if(!req||req.target!==currentRole||req.status==='مغلق')return;
+      if(currentRole==='parent'&&code!=='طفل-01')return;
+      const message=event.target.querySelector('textarea').value.trim();if(!message)return;
+      req.response=message;req.status='تم الرد';req.answeredAt=fmtDate();
+      persist();renderAllViews();showToast('تم حفظ ردك وستراه الإدارة عند تسجيل الدخول من الجهاز نفسه.');
+    }
+    function setRequestClosed(code,index,close){
+      if(!roleCheck('admin')||!dataByCode[code]?.requests?.[index])return;
+      const req=dataByCode[code].requests[index];
+      if(close&&req.status!=='تم الرد'){alert('انتظر رد الطرف المطلوب قبل إغلاق الطلب.');return;}
+      req.status=close?'مغلق':'بانتظار الرد';
+      if(!close){req.response='';req.answeredAt='';}
+      persist();renderAllViews();showToast(close?'تم إغلاق الطلب.':'أُعيد فتح الطلب.');
+    }
+    function submitParentCarePlan(event){
+      event.preventDefault();if(!roleCheck('parent'))return;
+      const p=dataByCode['طفل-01'].carePlan;
+      p.submitted=document.getElementById('parent-care-submitted').checked;
+      p.contactConfirmed=document.getElementById('parent-care-contact').checked;
+      if(!p.submitted || !p.contactConfirmed){p.reviewed=false;}
+      persist();renderAllViews();showToast('حُفظت تأكيدات الأسرة محليًا.');
+    }
+    function updateAdminReadiness(code,field,checked){
+      if(!roleCheck('admin')||!dataByCode[code]||!['reviewed','assigned'].includes(field))return;
+      if(field==='reviewed'&&checked&&(!dataByCode[code].carePlan.submitted||!dataByCode[code].carePlan.contactConfirmed)){
+        alert('يجب أن تؤكد الأسرة تسليم خطة الرعاية وتحديث بيانات التواصل أولًا.');renderAllViews();return;
+      }
+      dataByCode[code].carePlan[field]=checked;persist();renderAllViews();showToast('تم تحديث جاهزية خطة الرعاية.');
+    }
+    function requestAppointmentFollowUp(code,index){
+      if(!roleCheck('admin')||!dataByCode[code]?.appointments?.[index])return;
+      const a=dataByCode[code].appointments[index];
+      const exists=dataByCode[code].requests.some(r=>r.appointmentKey===a.date+'|'+a.time&&r.target==='teacher'&&r.status!=='مغلق');
+      if(exists){showToast('يوجد طلب متابعة مفتوح مسبقًا لهذا الموعد.');return;}
+      dataByCode[code].requests.unshift({id:makeDemoId(),target:'teacher',title:'تنسيق الحضور والتعويض الدراسي',details:`يرجى التنسيق بشأن موعد ${a.hospital} بتاريخ ${a.date}، وتوضيح ترتيب تعويض الدروس والأنشطة عند الحاجة.`,status:'بانتظار الرد',response:'',time:fmtDate(),answeredAt:'',appointmentKey:a.date+'|'+a.time});
+      persist();renderAllViews();showToast('تم توجيه طلب تنسيق للمعلم داخل النسخة التجريبية.');
+    }
+    function renderRoleRequests(){
+      for(const role of ['parent','teacher']){
+        const dest=document.getElementById(role+'-requests');if(!dest)continue;
+        const items=allRequests().filter(r=>r.target===role&&(role!=='parent'||r.code==='طفل-01'));
+        dest.innerHTML=items.length?items.map(r=>`<article class="border border-slate-200 rounded-xl p-3 text-xs space-y-2 bg-slate-50"><div class="flex justify-between flex-wrap gap-2"><b>${escapeHtml(r.code)} — ${escapeHtml(r.title)}</b>${statusPill(r.status)}</div><p class="text-slate-700">${escapeHtml(r.details)}</p><p class="text-slate-400">تاريخ الطلب: ${escapeHtml(r.time)}</p>${r.response?`<div class="bg-white rounded-lg p-2 border border-slate-100">ردك: ${escapeHtml(r.response)}</div>`:''}${r.status!=='مغلق'?`<form onsubmit="submitRequestReply(event,'${r.code}',${r.index})" class="space-y-2"><textarea maxlength="400" required rows="2" class="w-full border border-slate-300 rounded-lg p-2" placeholder="اكتب الرد أو الخطوة التي اتخذتها...">${escapeHtml(r.response)}</textarea><button class="bg-sky-700 text-white rounded-lg px-3 py-2 font-bold">${r.response?'تعديل الرد':'حفظ الرد'}</button></form>`:'<p class="text-emerald-700 font-bold">اكتملت هذه المتابعة الإدارية.</p>'}</article>`).join(''):'<p class="text-xs text-slate-500">لا توجد طلبات من الإدارة حاليًا.</p>';
+      }
+      for(const role of ['parent','teacher']){
+        const el=document.getElementById(role+'-case-summary');if(!el)continue;
+        const arr=allCases().filter(c=>role==='teacher'||c.code==='طفل-01');
+        el.innerHTML=arr.length?arr.map(c=>`<div class="flex gap-2 justify-between items-center flex-wrap bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs"><div><b>${escapeHtml(c.code)} — ${escapeHtml(c.title)}</b><p class="text-slate-500 mt-1">${escapeHtml(c.action||'بانتظار إجراء إداري')}</p></div>${statusPill(c.status)}</div>`).join(''):'<p class="text-xs text-slate-500">لا توجد متابعات إدارية مسجلة.</p>';
+      }
+      const p=dataByCode['طفل-01'].carePlan;
+      document.getElementById('parent-care-submitted').checked=p.submitted;
+      document.getElementById('parent-care-contact').checked=p.contactConfirmed;
+      document.getElementById('parent-care-status').innerHTML=`<p class="text-xs text-slate-600">حالة مراجعة الإدارة للخطة: <b>${p.reviewed?'تمت المراجعة':'بانتظار المراجعة'}</b> • مسؤول المتابعة المدرسية: <b>${p.assigned?'تم تعيينه':'لم يُحدّد بعد'}</b></p>`;
+    }
+    function renderAdminDashboard(){
+      const cases=allCases();const requests=allRequests();const esc=escapeHtml;
+      const readies=Object.entries(dataByCode);
+      const readyCount=readies.filter(([k,d])=>Object.values(d.carePlan).every(Boolean)).length;
+      document.getElementById('admin-open-cases').textContent=cases.filter(c=>c.status!=='مكتملة').length;
+      document.getElementById('admin-closed-cases').textContent=cases.filter(c=>c.status==='مكتملة').length;
+      document.getElementById('admin-waiting-requests').textContent=requests.filter(r=>r.status==='بانتظار الرد').length;
+      document.getElementById('admin-ready-plans').textContent=readyCount+'/'+readies.length;
+      document.getElementById('admin-case-list').innerHTML=cases.length?cases.map(c=>`<article id="admin-case-${c.code}-${c.index}" class="border border-slate-200 rounded-xl p-3 text-xs space-y-2"><div class="flex justify-between gap-2 flex-wrap"><b>${esc(c.code)} — ${esc(c.title)}</b>${statusPill(c.status)}</div><p class="text-slate-600">${esc(c.details)}</p><p class="text-slate-400">فتح: ${esc(c.time)} ${c.updatedAt?'| آخر تحديث: '+esc(c.updatedAt):''}</p><div class="grid sm:grid-cols-2 gap-2"><select data-field="status" class="border border-slate-300 rounded-lg p-2"><option ${c.status==='بانتظار إجراء'?'selected':''}>بانتظار إجراء</option><option ${c.status==='قيد المتابعة'?'selected':''}>قيد المتابعة</option><option ${c.status==='مكتملة'?'selected':''}>مكتملة</option></select><button onclick="updateAdminCase('${c.code}',${c.index})" class="bg-sky-700 text-white rounded-lg px-3 py-2 font-bold">حفظ المتابعة</button></div><textarea data-field="action" maxlength="400" rows="2" class="w-full border border-slate-300 rounded-lg p-2" placeholder="الإجراء المتخذ أو ما تم تنسيقه">${esc(c.action||'')}</textarea></article>`).join(''):'<p class="text-slate-500 text-xs">لا توجد متابعات حالية. يمكن فتح متابعة جديدة أعلاه.</p>';
+      document.getElementById('admin-request-list').innerHTML=requests.length?requests.map(r=>`<article class="border border-slate-200 rounded-xl p-3 text-xs space-y-2"><div class="flex justify-between gap-2 flex-wrap"><b>${esc(r.code)} ← ${r.target==='parent'?'ولي الأمر':'المعلم'}: ${esc(r.title)}</b>${statusPill(r.status)}</div><p class="text-slate-600">${esc(r.details)}</p>${r.response?`<div class="bg-sky-50 rounded-lg p-2">رد ${r.target==='parent'?'ولي الأمر':'المعلم'}: ${esc(r.response)}<p class="text-slate-400 mt-1">${esc(r.answeredAt)}</p></div>`:'<p class="text-slate-400">بانتظار رد الطرف المحدد.</p>'}${r.status==='تم الرد'?`<button onclick="setRequestClosed('${r.code}',${r.index},true)" class="rounded-lg bg-emerald-700 text-white px-3 py-2 font-bold">تأكيد اكتمال الطلب</button>`:r.status==='مغلق'?`<button onclick="setRequestClosed('${r.code}',${r.index},false)" class="border border-slate-300 rounded-lg px-3 py-2">إعادة فتح الطلب</button>`:''}</article>`).join(''):'<p class="text-slate-500 text-xs">لم تُوجّه طلبات بعد.</p>';
+      document.getElementById('admin-readiness').innerHTML=readies.map(([code,d])=>{const p=d.carePlan;const ready=Object.values(p).every(Boolean);return `<article class="rounded-xl border border-slate-200 p-4 text-xs space-y-3"><div class="flex justify-between gap-2 flex-wrap"><b class="text-sm">${code}</b>${statusPill(ready?'مكتملة':'غير مكتملة')}</div><div class="space-y-1"><p>${p.submitted?'✅':'⬜'} الأسرة: تسليم خطة الرعاية</p><p>${p.contactConfirmed?'✅':'⬜'} الأسرة: تحديث جهات الاتصال</p></div><label class="flex items-center gap-2"><input type="checkbox" ${p.reviewed?'checked':''} onchange="updateAdminReadiness('${code}','reviewed',this.checked)"> راجعت الإدارة اكتمال الخطة</label><label class="flex items-center gap-2"><input type="checkbox" ${p.assigned?'checked':''} onchange="updateAdminReadiness('${code}','assigned',this.checked)"> تم تحديد مسؤول المتابعة المدرسية</label></article>`;}).join('');
+      const apps=Object.entries(dataByCode).flatMap(([code,d])=>d.appointments.map((a,index)=>({...a,code,index}))).sort((a,b)=>a.date.localeCompare(b.date));
+      document.getElementById('admin-appointments').innerHTML=apps.length?apps.map(a=>`<div class="border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3 text-xs"><div><b>${esc(a.code)} — ${esc(a.hospital)}</b><p class="text-slate-500 mt-1">${esc(a.date)} | ${esc(a.time)} • مدخل من ولي الأمر</p></div><button onclick="requestAppointmentFollowUp('${a.code}',${a.index})" class="border border-sky-200 text-sky-800 bg-sky-50 rounded-xl px-3 py-2 font-bold">طلب تنسيق من المعلم</button></div>`).join(''):'<p class="text-xs text-slate-500">لا توجد مواعيد مدخلة.</p>';
+    }
+
+    function renderAllViews(){
+      if(!currentRole)return;
+      const d=dataByCode[currentStudentCode];
+      const esc=escapeHtml;
+      document.getElementById('header-student-code').textContent=currentStudentCode;
+      document.getElementById('current-student-title').textContent='الطفل المعرف: ['+currentStudentCode+']';
+      document.getElementById('teacher-current-code-label').textContent='الكود التعريفي الحالي: '+currentStudentCode;
+      const latest=[...d.logs].find(l=>l.glucose!==null && l.glucose!=='' && Number.isFinite(Number(l.glucose)));
+      document.getElementById('parent-last-glucose').textContent=latest ? String(latest.glucose)+' mg/dL':'لا توجد قراءة';
+      document.getElementById('parent-excuse-count').textContent=String(d.excuses.filter(x=>x.status==='معتمد').length);
+      const next=[...d.appointments].filter(a=>a.date>=new Date().toISOString().slice(0,10)).sort((a,b)=>a.date.localeCompare(b.date))[0];
+      document.getElementById('next-app-display').textContent=next ? next.hospital+' ('+next.date+')' : 'لا توجد مواعيد قادمة';
+      document.getElementById('appointments-list').innerHTML=d.appointments.length?d.appointments.map(a=>`<div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs"><b>${esc(a.hospital)}</b><p>${esc(a.date)} ${esc(a.time)} — ${esc(a.status)}</p></div>`).join(''):'<p class="text-sm text-slate-400">لا توجد مواعيد.</p>';
+      document.getElementById('excuses-list').innerHTML=d.excuses.length?d.excuses.map(x=>`<div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs"><b>${esc(x.date)}</b> — ${esc(x.reason)}<p class="text-sky-700">الحالة: ${esc(x.status)}</p></div>`).join(''):'<p class="text-sm text-slate-400">لا توجد أعذار.</p>';
+      document.getElementById('teacher-logs-tbody').innerHTML=d.logs.map((l,i)=>`<tr class="border-b border-slate-100"><td class="p-3">${esc(l.time)}</td><td class="p-3">${l.glucose===null?'—':esc(l.glucose)}</td><td class="p-3">${esc(l.insulin)}</td><td class="p-3">${esc(l.meal)}</td><td class="p-3">${esc(l.symptoms)}</td><td class="p-3">${esc(l.action||'—')}<p class="text-xs text-slate-500">${l.notified?'تم التواصل مع الأسرة':''}</p></td><td class="p-3"><button onclick="deleteTeacherLog('${currentStudentCode}',${i})" class="text-red-600 text-xs" title="حذف السجل">حذف</button></td></tr>`).join('');
+      const excuses=Object.entries(dataByCode).flatMap(([code,v])=>v.excuses.map((e,i)=>({...e,code,index:i})));
+      document.getElementById('admin-excuses-table').innerHTML=excuses.map(e=>`<tr class="border-b border-slate-100"><td class="p-3">${esc(e.code)}</td><td class="p-3">${esc(e.date)}</td><td class="p-3">${esc(e.reason)}</td><td class="p-3 text-xs">${esc(e.file || 'لم يرفع ملف')}</td><td class="p-3">${esc(e.status)}</td><td class="p-3">${e.status==='بانتظار الاعتماد'?`<button class="bg-emerald-600 text-white rounded-lg px-2 py-1" onclick="approveExcuse('${e.code}',${e.index})">اعتماد</button>`:'تمت المراجعة'}</td></tr>`).join('');
+      document.getElementById('pending-excuses-count').textContent=String(excuses.filter(e=>e.status==='بانتظار الاعتماد').length);
+      const emergencies=Object.entries(dataByCode).flatMap(([code,v])=>(v.emergencies||[]).map(e=>({...e,code})));
+      const body=document.querySelector('#view-admin .pt-6 tbody');
+      if(body) body.innerHTML=emergencies.length?emergencies.map(e=>`<tr><td class="p-3">${esc(e.code)}</td><td class="p-3">${esc(e.type)}</td><td class="p-3">${esc(e.time)}</td><td class="p-3">توثيق تجريبي فقط — الرجاء الاتصال مباشرة بالإسعاف 999 عند الطوارئ</td><td class="p-3">لا توجد استجابة تلقائية</td></tr>`).join(''):'<tr><td colspan="5" class="p-3 text-slate-500">لا توجد حوادث مسجلة.</td></tr>';
+      renderMessages();renderRoleRequests();renderAdminDashboard();initParentChart();
+      if(window.lucide)lucide.createIcons();
+    }
+    function openAppointmentModal(){if(roleCheck('parent'))document.getElementById('modal-appointment').classList.remove('hidden');}
+    function closeAppointmentModal(){document.getElementById('modal-appointment').classList.add('hidden');}
+    function openExcuseModal(){if(roleCheck('parent'))document.getElementById('modal-excuse').classList.remove('hidden');}
+    function closeExcuseModal(){document.getElementById('modal-excuse').classList.add('hidden');}
+    function openTeacherLogModal(){if(roleCheck('teacher'))document.getElementById('modal-teacher-log').classList.remove('hidden');}
+    function closeTeacherLogModal(){document.getElementById('modal-teacher-log').classList.add('hidden');}
+    function triggerEmergencyModal(){if(currentRole)document.getElementById('modal-emergency').classList.remove('hidden');}
+    function closeEmergencyModal(){document.getElementById('modal-emergency').classList.add('hidden');}
+    function dismissAlert(){document.getElementById('alert-banner').classList.add('hidden');}
+    function selectEmerType(button){
+      selectedEmergencyType=button.textContent.trim();
+      document.querySelectorAll('.emer-type-btn').forEach(b=>b.className='emer-type-btn p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-center transition');
+      button.className='emer-type-btn p-3 rounded-xl border border-red-300 bg-red-50 text-red-700 font-bold text-center transition';
+    }
+    function confirmEmergencySOS(){
+      if(!currentRole)return;
+      dataByCode[currentStudentCode].emergencies ??=[];
+      dataByCode[currentStudentCode].emergencies.unshift({type:selectedEmergencyType,time:fmtDate()});
+      persist();closeEmergencyModal();renderAllViews();
+      document.getElementById('alert-banner').classList.remove('hidden');
+      document.getElementById('alert-banner-text').textContent=`توثيق تجريبي لـ ${currentStudentCode}: ${selectedEmergencyType}. لم يتم إرسال بلاغ لأي جهة. في الطوارئ اتصل بالإسعاف 999.`;
+      showToast('تم حفظ حدث تجريبي فقط؛ لم تُرسل إشعارات.');
+    }
+    function handleAppointmentSubmit(e){
+      e.preventDefault();if(!roleCheck('parent'))return;
+      const hospital=document.getElementById('app-hospital').value;
+      const date=document.getElementById('app-date').value;
+      const time=document.getElementById('app-time').value;
+      if(!date || !time)return;
+      dataByCode[currentStudentCode].appointments.push({hospital,date,time,status:'قادم'});
+      persist();e.target.reset();closeAppointmentModal();renderAllViews();showToast('حُفظ الموعد محليًا في هذا المتصفح.');
+    }
+    function handleExcuseSubmit(e){
+      e.preventDefault();if(!roleCheck('parent'))return;
+      const date=document.getElementById('exc-date').value;
+      const reason=document.getElementById('exc-reason').value.trim();
+      if(!date || !reason)return;
+      const input=document.getElementById('exc-file');
+      const file=input.files && input.files[0] ? input.files[0].name : 'لا يوجد مرفق';
+      dataByCode[currentStudentCode].excuses.push({date,reason,file:file+' (اسم فقط؛ الملف غير مرفوع)',status:'بانتظار الاعتماد'});
+      persist();e.target.reset();closeExcuseModal();renderAllViews();showToast('حُفظ طلب العذر محليًا؛ لم يُرفع الملف فعليًا.');
+    }
+    function handleTeacherLogSubmit(e){
+      e.preventDefault();if(!roleCheck('teacher'))return;
+      const glucoseRaw=document.getElementById('t-glucose').value;
+      const glucose=glucoseRaw!==''?Number(glucoseRaw):null;
+      if(glucose!==null && (!Number.isFinite(glucose)||glucose<20||glucose>600)){alert('يرجى إدخال قراءة بين 20 و600 أو ترك الحقل فارغًا.');return;}
+      const insulin=document.getElementById('t-insulin').value.trim()||'—';
+      const meal=document.getElementById('t-meal').value.trim()||'—';
+      const symptoms=document.getElementById('t-symptoms').value.trim()||'لا توجد ملاحظة';
+      const action=document.getElementById('t-action').value.trim()||'—';
+      const notified=document.getElementById('t-notified').checked;
+      const needsFollowup=document.getElementById('t-followup').checked;
+      dataByCode[currentStudentCode].logs.unshift({time:fmtDate(),glucose,insulin,meal,symptoms,action,notified});
+      if(needsFollowup){
+        dataByCode[currentStudentCode].cases.unshift({id:makeDemoId(),title:'متابعة ملاحظة صفية من المعلم',details:'توجد ملاحظة صفية تستلزم تنسيقًا إداريًا. يرجى التواصل مع المعلم بشأن الإجراء المناسب، دون تداول التفاصيل الطبية غير اللازمة.',status:'بانتظار إجراء',action:'',time:fmtDate(),updatedAt:''});
+      }
+      persist();e.target.reset();closeTeacherLogModal();renderAllViews();showToast('تم حفظ الملاحظة على هذا الجهاز.');
+    }
+    function deleteTeacherLog(code,index){
+      if(!roleCheck('teacher') || !dataByCode[code] || !confirm('هل تريد حذف السجل التجريبي؟'))return;
+      dataByCode[code].logs.splice(index,1);persist();renderAllViews();showToast('تم حذف السجل.');
+    }
+    function approveExcuse(code,index){
+      if(!roleCheck('admin') || !dataByCode[code]?.excuses?.[index])return;
+      dataByCode[code].excuses[index].status='معتمد';persist();renderAllViews();showToast('تم اعتماد العذر في البيانات التجريبية.');
+    }
+    function showToast(message){
+      const div=document.createElement('div');div.className='fixed bottom-5 left-5 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl z-[110] text-xs font-bold';
+      div.textContent=message;document.body.appendChild(div);setTimeout(()=>div.remove(),3300);
+    }
+    window.addEventListener('storage',event=>{
+      if(event.key===STORAGE_KEY){dataByCode=loadSavedData();if(currentRole)renderAllViews();}
+    });
+    window.addEventListener('DOMContentLoaded',()=>{
+      if(window.lucide)lucide.createIcons();
+      const oldRole=safeStore.getSession(SESSION_KEY);
+      if(PINS[oldRole]){currentRole=oldRole;document.getElementById('demo-login').classList.add('hidden');setRoleView();}
+      else {showLoginScreen();}
+    });
+    </script>
+</body>
+</html>
